@@ -152,7 +152,7 @@ namespace libmix4sam {
     return we;
   };
 
-  Vector Mixture::getExponents(const gtsam::Vector &unwhitenedError) const{
+  gtsam::Vector Mixture::getExponents(const gtsam::Vector &unwhitenedError) const{
     
     // whitened error for all components of mixture
     gtsam::Matrix we = this->getWhitenedComponents(unwhitenedError);
@@ -297,7 +297,7 @@ namespace libmix4sam {
 
     gtsam::Vector MixBase::whiten(const gtsam::Vector& v) const { 
       //std::cout << "whiten" << std::endl;
-      Vector r = v; 
+      gtsam::Vector r = v;
       this->whitenInPlace(r); 
       return r; 
     }
@@ -319,12 +319,12 @@ namespace libmix4sam {
       mixture_.print(name);
     }
 
-    void MaxMix::normalizer2dim(Vector &c) const{
+    void MaxMix::normalizer2dim(gtsam::Vector &c) const{
       double gamma = c.maxCoeff();
       c = (-2.0 * (c / gamma).array().log()).sqrt();
     }
 
-    size_t MaxMix::min(Vector &c, Matrix &we) const{
+    size_t MaxMix::min(gtsam::Vector &c, gtsam::Matrix &we) const{
       double min_err = this->cdistance(c(0), we.row(0));
       size_t min_idx = 0;
       for(size_t i=1; i<mixture_.size();i++){
@@ -338,7 +338,7 @@ namespace libmix4sam {
       return min_idx;
     }
 
-    Vector MaxMix::processMixture(const Vector& v, boost::optional<ComponentSelect &> gamma_m) const {
+      gtsam::Vector MaxMix::processMixture(const gtsam::Vector& v, boost::optional<ComponentSelect &> gamma_m) const {
       //std::cout << "processMixture" << std::endl;
       gttic_(MaxMix_processMixture);
 
@@ -392,7 +392,7 @@ namespace libmix4sam {
 
       // TODO: Only if we want to optimize over the standard deviations or the weights of the components, we need to add the
       // extra dimension of the error vector and accordingly the extra entries in the A matrix
-      gtsam::Matrix C = Matrix::Zero(A.rows(), A.cols());
+      gtsam::Matrix C = gtsam::Matrix::Zero(A.rows(), A.cols());
       
       // Whiten matrix by current mixture component
       C.topLeftCorner(A.rows(), A.cols()) = p->Whiten(A);
@@ -408,7 +408,7 @@ namespace libmix4sam {
       b = this->processMixture(b, idx_gamma);  // eqivalent to whiten, but returning additional information for us
       b *= -1.0;
 
-      for(Matrix& Aj: A) { 
+      for(gtsam::Matrix& Aj: A) {
         Aj = this->Whiten(Aj, idx_gamma.first); 
       }
     }
@@ -447,7 +447,7 @@ namespace libmix4sam {
       return shared_ptr(new MaxSumMix(noise));
     }
 
-    double MaxSumMix::squaredMahalanobisDistance(const Vector& v) const { 
+    double MaxSumMix::squaredMahalanobisDistance(const gtsam::Vector& v) const {
 
       // normalization factor for all components
       gtsam::Vector c = this->mixture_.getScalingFactors();
@@ -463,14 +463,14 @@ namespace libmix4sam {
       size_t min_idx = this->min(c_as_dim, we);
 
       // Calculate correction term
-      Vector exponents = this->mixture_.getExponents(v);
+      gtsam::Vector exponents = this->mixture_.getExponents(v);
       double cMax = c(min_idx);
       double dMax = exponents(min_idx);
       double sumMixCorrection = -2.0 * (libmix4sam::ScaledLogSumExp(exponents.array() - dMax, c.array() / cMax) - log(c.size() + MAXSUMMIX_DAMPENING) );
       return this->cdistance(c_as_dim(min_idx), we.row(min_idx)) + sumMixCorrection;
     }
 
-    gtsam::Vector MaxSumMix::whiten(const Vector& v, boost::optional<size_t &> idx_max) const {
+    gtsam::Vector MaxSumMix::whiten(const gtsam::Vector& v, boost::optional<size_t &> idx_max) const {
 
       // normalization factor for all components
       gtsam::Vector c = this->mixture_.getScalingFactors();
@@ -488,7 +488,7 @@ namespace libmix4sam {
       gtsam::Vector whitenedErrorMax = we.row(min_idx);
 
       // Calculate correction term
-      Vector exponents = this->mixture_.getExponents(v);
+      gtsam::Vector exponents = this->mixture_.getExponents(v);
       double cMax = c(min_idx);
       double dMax = exponents(min_idx);
       double sumMixCorrection = sqrt(-2.0 * (libmix4sam::ScaledLogSumExp(exponents.array() - dMax, c.array() / cMax) - log(c.size() + MAXSUMMIX_DAMPENING) ));
@@ -498,13 +498,13 @@ namespace libmix4sam {
       return (gtsam::Vector(whitenedErrorMax.size()+1) << whitenedErrorMax, sumMixCorrection).finished();
     };
 
-    Matrix MaxSumMix::Whiten(const Matrix& A, const Vector& v, const size_t& idx_max) const {
+      gtsam::Matrix MaxSumMix::Whiten(const gtsam::Matrix& A, const gtsam::Vector& v, const size_t& idx_max) const {
       // A ... 
       // v ... -unwhitenedError()
 
       // A corresponds to d_unwhitenedError/d_state
       //calculate: d_whiten/d_unwhitenedError
-      Matrix d_whiten__d_unwhitenedError;
+          gtsam::Matrix d_whiten__d_unwhitenedError;
 
 #if !defined(MAXSUMMIX_NUMERIC) || MAXSUMMIX_NUMERIC 
       if (v.size() == 1){
@@ -529,7 +529,7 @@ namespace libmix4sam {
       return d_whiten__d_unwhitenedError * A;  // TODO: A hat höhere Dimension, da Jakobi-Matrix aus Faktor.
 #else
       // As we extended our error vector, we need to add an additional line to the A matrix!
-      gtsam::Matrix C = Matrix::Zero(A.rows()+1, A.cols());
+      gtsam::Matrix C = gtsam::Matrix::Zero(A.rows()+1, A.cols());
 
       // Get the current mixture component
       const gtsam::noiseModel::Gaussian* p_max = dynamic_cast<const gtsam::noiseModel::Gaussian*> (&*mixture_.at(idx_max).noiseModel_);
@@ -539,7 +539,7 @@ namespace libmix4sam {
       C.topRows(A.rows()) = p_max->Whiten(A);
 
       // See technical documentation for details on the formulas!
-      Vector exponents = this->mixture_.getExponents(v);
+      gtsam::Vector exponents = this->mixture_.getExponents(v);
       gtsam::Vector c = this->mixture_.getScalingFactors();
       exponents = exponents.array() - exponents(idx_max); // \tilde d_{i,j}
       c = c.array() / (c(idx_max) * (c.size() + MAXSUMMIX_DAMPENING)); // \tilde c_j = \frac{c_j}{\gamma_l c_{max}}
@@ -577,7 +577,7 @@ namespace libmix4sam {
     void MaxSumMix::WhitenSystem(std::vector<gtsam::Matrix>& A, gtsam::Vector& b) const {
       size_t idx_max;
       gtsam::Vector bw = this->whiten(-b, idx_max);
-      for(Matrix& Aj: A)  Aj = this->Whiten(Aj,-b, idx_max);
+      for(gtsam::Matrix& Aj: A)  Aj = this->Whiten(Aj,-b, idx_max);
       b = -bw;
     }
 
@@ -619,7 +619,7 @@ namespace libmix4sam {
         mixture_.print(name);
     }
 
-    Vector SumMix::getScalings(boost::optional<double &> gamma_s) const {
+      gtsam::Vector SumMix::getScalings(boost::optional<double &> gamma_s) const {
 
       gtsam::Vector c = this->mixture_.getScalingFactors();
 
@@ -631,16 +631,16 @@ namespace libmix4sam {
       return c / gamma_s_;
     }
 
-    Vector SumMix::processMixture(const Vector& v, double &gamma_s) const {
+      gtsam::Vector SumMix::processMixture(const gtsam::Vector& v, double &gamma_s) const {
       return (this->getScalings(gamma_s).array() * this->mixture_.getExponents(v).array().exp()).matrix();
     }
 
-    double SumMix::processMixtureNumericalRobust(const Vector& v, double &gamma_s) const {
+    double SumMix::processMixtureNumericalRobust(const gtsam::Vector& v, double &gamma_s) const {
         // return the gmm's log-likeliehood
         return libmix4sam::ScaledLogSumExp(this->mixture_.getExponents(v), this->getScalings(gamma_s));
     }
 
-    Vector SumMix::whiten(const Vector& v) const {
+      gtsam::Vector SumMix::whiten(const gtsam::Vector& v) const {
       double gamma_s = 0;
       double logSumMixture = processMixtureNumericalRobust(v, gamma_s);
       //double sqrtLogSumMixture = sqrt(-2.0*(logSumMixture - log(gamma_s)));
@@ -650,13 +650,13 @@ namespace libmix4sam {
       return v_new;
     };
 
-    Matrix SumMix::Whiten(const Matrix& A, const Vector& v) const {
+      gtsam::Matrix SumMix::Whiten(const gtsam::Matrix& A, const gtsam::Vector& v) const {
       // A ... 
       // v ... -unwhitenedError()
 
       // A corresponds to d_unwhitenedError/d_state
       //calculate: d_whiten/d_unwhitenedError
-      Matrix d_whiten__d_unwhitenedError;
+          gtsam::Matrix d_whiten__d_unwhitenedError;
 
 #if !defined(SUMMIX_NUMERIC) || SUMMIX_NUMERIC 
       if (v.size() == 1){
@@ -680,9 +680,9 @@ namespace libmix4sam {
       }
 #else
       // See technical documentation for details on the formulas!
-      Vector exponents = this->mixture_.getExponents(v);
+      gtsam::Vector exponents = this->mixture_.getExponents(v);
       std::vector<gtsam::Vector> dExponents = this->mixture_.getDExponents(v);
-      Vector scalings = this->getScalings();
+      gtsam::Vector scalings = this->getScalings();
       
       gtsam::Vector dSum = gtsam::Vector::Zero(v.size());
       for (size_t j=0; j<exponents.size();j++){
@@ -699,7 +699,7 @@ namespace libmix4sam {
     void SumMix::WhitenSystem(std::vector<gtsam::Matrix>& A, gtsam::Vector& b) const {
       b *= -1.0;
       //std::cout << "SumMix WhitenSystem Vector(A) b_old=" << b;
-      for(Matrix& Aj: A) { 
+      for(gtsam::Matrix& Aj: A) {
         //std::cout << " A_old=" << Aj(0,0);
         Aj = this->Whiten(Aj,b); 
         //std::cout << " A_new=" << Aj(0,0);

@@ -36,8 +36,6 @@
 #include <gtsam/base/timing.h>
 //#define gttic_(label) ((void)0)
 
-using namespace gtsam;
-
 namespace libmix4sam
 {
 
@@ -187,7 +185,7 @@ namespace libmix4sam
      * @param unwhitenedError Error vector.
      * @return Vector of exponents for each GMM component.
      */
-    Vector getExponents(const gtsam::Vector &unwhitenedError) const;
+    gtsam::Vector getExponents(const gtsam::Vector &unwhitenedError) const;
 
     /**
      * @brief Calculate the derivatives of an exponent with respect to the unwhitenedError vector.
@@ -316,9 +314,9 @@ namespace libmix4sam
 
         virtual void print(const std::string& name) const;
 
-        virtual Vector whiten(const Vector& v) const;
+        virtual gtsam::Vector whiten(const gtsam::Vector& v) const;
 
-        inline virtual Vector unwhiten(const Vector& /*v*/) const
+        inline virtual gtsam::Vector unwhiten(const gtsam::Vector& /*v*/) const
         { throw std::invalid_argument("unwhiten is not currently supported for MixBase noise models."); }
 
         /**
@@ -328,7 +326,7 @@ namespace libmix4sam
          * @param v
          * @return Matrix
          */
-        virtual Matrix Whiten(const Matrix& A, const Vector& v) const = 0;
+        virtual gtsam::Matrix Whiten(const gtsam::Matrix& A, const gtsam::Vector& v) const = 0;
 
         // Attention. WhitenSystem methods use the vector b, which is typically corresponding to -1 * unwhitenedError
         // virtual void WhitenSystem(std::vector<Matrix>& A, Vector& b) const;
@@ -395,7 +393,7 @@ namespace libmix4sam
          *
          * @return std::pair<double,Vector> first is cj, normalization factor of gmm component (wj*det(R)) and second is we, whitened error of vector v
          */
-        std::pair<double,Vector> regularWhite(const Vector& v) const{
+        std::pair<double,gtsam::Vector> regularWhite(const gtsam::Vector& v) const{
           // see process mixture for more comments
           gtsam::Vector c = this->mixture_.getScalingFactors();
           gtsam::Matrix we = this->mixture_.getWhitenedComponents(v);
@@ -411,7 +409,7 @@ namespace libmix4sam
          *
          * @param c Vector of normalization factors.
          */
-        void normalizer2dim(Vector &c) const;
+        void normalizer2dim(gtsam::Vector &c) const;
 
         /**
          * @brief Search for the index of gaussian component with minimum error.
@@ -420,7 +418,7 @@ namespace libmix4sam
          * @param we
          * @return size_t Index j of the minimum component.
          */
-        size_t min(Vector &c, Matrix &we) const;
+        size_t min(gtsam::Vector &c, gtsam::Matrix &we) const;
 
         /**
          * @brief Get mixture component with minimum cost.
@@ -435,19 +433,19 @@ namespace libmix4sam
          * @param[out] gamma_m Returns index of selected component and the value of the additional normalizer dimension see normalizer2dim().
          * @return Vector Whitened error of the mixture's component with minimum cost.
          */
-        Vector processMixture(const Vector& v, boost::optional<ComponentSelect &> gamma_m = boost::none) const;
+        gtsam::Vector processMixture(const gtsam::Vector& v, boost::optional<ComponentSelect &> gamma_m = boost::none) const;
 
         /// Standard interface can not be used, because of multiple components, overwrite for safety reasons.
-        virtual Matrix Whiten(const Matrix& A) const {
+        virtual gtsam::Matrix Whiten(const gtsam::Matrix& A) const {
           std::cout << "MaxMix, Whiten(A): DONT CALL THIS! USE Whiten(A,b)" << std::endl;
-          return Matrix::Zero(0,0);
+          return gtsam::Matrix::Zero(0,0);
         };
 
         /// Whiten A with specific component of GMM, selected by given component's index.
-        virtual Matrix Whiten(const Matrix& A, const size_t& idx) const;
+        virtual gtsam::Matrix Whiten(const gtsam::Matrix& A, const size_t& idx) const;
 
         /// Same as WhitenSystem(), but only returning the whitened Jacobian matrix.
-        virtual Matrix Whiten(const Matrix& A, const Vector& v) const {
+        virtual gtsam::Matrix Whiten(const gtsam::Matrix& A, const gtsam::Vector& v) const {
           ComponentSelect idx_gamma;
           this->processMixture(v, idx_gamma);
           return this->Whiten(A, idx_gamma.first);
@@ -463,12 +461,12 @@ namespace libmix4sam
          * @param[in,out] A Unwhitened Jacobian matrix to be converted into the A matrix.
          * @param[in,out] b Negative unwhitened error vector.
          */
-        virtual void WhitenSystem(Matrix& A, Vector& b) const;
+        virtual void WhitenSystem(gtsam::Matrix& A, gtsam::Vector& b) const;
         
         // Convenience methods, doing the same as above with different input.
-        virtual void WhitenSystem(std::vector<Matrix>& A, Vector& b) const;
-        virtual void WhitenSystem(Matrix& A1, Matrix& A2, Vector& b) const;
-        virtual void WhitenSystem(Matrix& A1, Matrix& A2, Matrix& A3, Vector& b) const;
+        virtual void WhitenSystem(std::vector<gtsam::Matrix>& A, gtsam::Vector& b) const;
+        virtual void WhitenSystem(gtsam::Matrix& A1, gtsam::Matrix& A2, gtsam::Vector& b) const;
+        virtual void WhitenSystem(gtsam::Matrix& A1, gtsam::Matrix& A2, gtsam::Matrix& A3, gtsam::Vector& b) const;
 
         /**
          * @brief Return the squared norm for one component.
@@ -479,7 +477,7 @@ namespace libmix4sam
          * @param vj Whitened Error vector.
          * @return double
          */
-        double cdistance(const double& cj, const Vector& vj) const {
+        double cdistance(const double& cj, const gtsam::Vector& vj) const {
           return cj*cj + vj.squaredNorm();
         }
 
@@ -492,9 +490,9 @@ namespace libmix4sam
          * @param v unwhitened error vector comming from the NonlinearFactor implementation.
          * @return double squared error including the regularization therm.
          */
-        inline virtual double squaredMahalanobisDistance(const Vector& v) const { 
+        inline virtual double squaredMahalanobisDistance(const gtsam::Vector& v) const {
           ComponentSelect gamma_m;
-          Vector d = this->processMixture(v, gamma_m);
+          gtsam::Vector d = this->processMixture(v, gamma_m);
           return this->cdistance(gamma_m.second, d);
         }
 
@@ -505,7 +503,7 @@ namespace libmix4sam
          * @param v unwhitened error comming from the NonlinearFactor implementation.
          * @return Vector whitened error.
          */
-        virtual Vector whiten(const Vector& v) const {
+        virtual gtsam::Vector whiten(const gtsam::Vector& v) const {
           // Hier wird der Fehlervektor mit der sqare root information matrix multipliziert.
           return processMixture(v);
           // TODO: Only if we want to optimize over the standard deviations or the weights of the components, we need to add the
@@ -516,7 +514,7 @@ namespace libmix4sam
         }
 
         /// For Matlab to compensate for the distance normalizer.
-        double distanceNormalizer(const Vector& v) const {
+        double distanceNormalizer(const gtsam::Vector& v) const {
           ComponentSelect gamma_m;
           this->processMixture(v, gamma_m);
           return gamma_m.second; 
@@ -563,16 +561,16 @@ namespace libmix4sam
           return MixBase::shared_ptr(new MaxSumMix(mix));
         }
         
-        virtual double squaredMahalanobisDistance(const Vector& v) const;
+        virtual double squaredMahalanobisDistance(const gtsam::Vector& v) const;
 
-        virtual Vector whiten(const Vector& v, boost::optional<size_t &> idx_max = boost::none) const;
-        Matrix Whiten(const Matrix& A, const Vector& v, const size_t& idx_max) const;
+        virtual gtsam::Vector whiten(const gtsam::Vector& v, boost::optional<size_t &> idx_max = boost::none) const;
+        gtsam::Matrix Whiten(const gtsam::Matrix& A, const gtsam::Vector& v, const size_t& idx_max) const;
 
-        virtual Matrix Whiten(const Matrix& A) const {std::cout << "SumMix::Whiten(A) -> NOT IMPLEMENTED. SHOULD NOT BE CALLED." << std::endl; return Matrix::Zero(0,0);};
-        virtual void WhitenSystem(std::vector<Matrix>& A, Vector& b) const ;
-        virtual void WhitenSystem(Matrix& A, Vector& b) const ;
-        virtual void WhitenSystem(Matrix& A1, Matrix& A2, Vector& b) const ;
-        virtual void WhitenSystem(Matrix& A1, Matrix& A2, Matrix& A3, Vector& b) const ;
+        virtual gtsam::Matrix Whiten(const gtsam::Matrix& A) const {std::cout << "SumMix::Whiten(A) -> NOT IMPLEMENTED. SHOULD NOT BE CALLED." << std::endl; return gtsam::Matrix::Zero(0,0);};
+        virtual void WhitenSystem(std::vector<gtsam::Matrix>& A, gtsam::Vector& b) const ;
+        virtual void WhitenSystem(gtsam::Matrix& A, gtsam::Vector& b) const ;
+        virtual void WhitenSystem(gtsam::Matrix& A1, gtsam::Matrix& A2, gtsam::Vector& b) const ;
+        virtual void WhitenSystem(gtsam::Matrix& A1, gtsam::Matrix& A2, gtsam::Matrix& A3, gtsam::Vector& b) const ;
 
         // Used in matlab interface
         static shared_ptr Create(const libmix4sam::Mixture& noise);
@@ -626,7 +624,7 @@ namespace libmix4sam
          * @param gamma_s Optinally returns the value of used gamma_s
          * @return Vector Scaling for each component as vector entry
          */
-        Vector getScalings(boost::optional<double &> gamma_s = boost::none) const;
+        gtsam::Vector getScalings(boost::optional<double &> gamma_s = boost::none) const;
 
         /**
          * @brief Calculate likeliehood for each gmm-component.
@@ -639,7 +637,7 @@ namespace libmix4sam
          * @param gamma_s Additional parameter, which returns the calculated value for gamma_s.
          * @return Vector Is returning the likeliehood for each component as a vector.
          */
-        Vector processMixture(const Vector& v,  double &gamma_s) const;
+        gtsam::Vector processMixture(const gtsam::Vector& v,  double &gamma_s) const;
 
         /**
          * @brief Calculate the GMM's log-likeliehood in a robust way.
@@ -649,9 +647,9 @@ namespace libmix4sam
          * @param[out] gamma_s Additional parameter, which returns the calculated value for gamma_s.
          * @return double The GMM's likeliehood with already applied log.
          */
-        double processMixtureNumericalRobust(const Vector& v, double &gamma_s) const;
+        double processMixtureNumericalRobust(const gtsam::Vector& v, double &gamma_s) const;
 
-        inline virtual double squaredMahalanobisDistance(const Vector& v) const  {
+        inline virtual double squaredMahalanobisDistance(const gtsam::Vector& v) const  {
           // double gamma_s = 1.0;
           // Vector gm = this->processMixture(v, gamma_s);
           // // To mach normal conventions, multiply by two and compensate for the introduced normalization factor
@@ -673,7 +671,7 @@ namespace libmix4sam
          * @param A unwhitened Jacobian matrix to be converted into the A matrix.
          * @return Matrix whitened Jacobian
          */
-        virtual Matrix Whiten(const Matrix& A) const  {
+        virtual gtsam::Matrix Whiten(const gtsam::Matrix& A) const  {
           // Wir machen gar nichts, da wir im Fall von SumMix die Kovarianz bereits in evaluateError berücksichtigen müssen.
           // Das übliche Auftrennen in \Sigma^{-1/2}*A funktioniert hier nicht. Die Gewichtung für A muss bereits eingeflossen sein!
           //std::cout << "SumMix::Whiten = TODO" << std::endl;
@@ -682,16 +680,16 @@ namespace libmix4sam
           //calculate: d_whiten/d_unwhitenedError
 
           std::cout << "SumMix::Whiten(A) -> NOT IMPLEMENTED. SHOULD NOT BE CALLED." << std::endl;
-          return Matrix::Zero(0,0);
+          return gtsam::Matrix::Zero(0,0);
         };
 
-        Matrix Whiten(const Matrix& A, const Vector& v) const ;
+        gtsam::Matrix Whiten(const gtsam::Matrix& A, const gtsam::Vector& v) const ;
 
         // Attention. WhitenSystem methods use the vector b, which is typically corresponding to -1 * unwhitenedError
-        virtual void WhitenSystem(std::vector<Matrix>& A, Vector& b) const ;
-        virtual void WhitenSystem(Matrix& A, Vector& b) const ;
-        virtual void WhitenSystem(Matrix& A1, Matrix& A2, Vector& b) const ;
-        virtual void WhitenSystem(Matrix& A1, Matrix& A2, Matrix& A3, Vector& b) const ;
+        virtual void WhitenSystem(std::vector<gtsam::Matrix>& A, gtsam::Vector& b) const ;
+        virtual void WhitenSystem(gtsam::Matrix& A, gtsam::Vector& b) const ;
+        virtual void WhitenSystem(gtsam::Matrix& A1, gtsam::Matrix& A2, gtsam::Vector& b) const ;
+        virtual void WhitenSystem(gtsam::Matrix& A1, gtsam::Matrix& A2, gtsam::Matrix& A3, gtsam::Vector& b) const ;
 
         /**
          * @brief Uses processMixtureNumericalRobust to calculate the likeliehood of error vector.
@@ -700,7 +698,7 @@ namespace libmix4sam
          * @param v unwhitened error comming from the NonlinearFactor implementation.
          * @return Vector whitened error.
          */
-        virtual Vector whiten(const Vector& v) const ;
+        virtual gtsam::Vector whiten(const gtsam::Vector& v) const ;
 
         // Used in matlab interface
         static shared_ptr Create(const libmix4sam::Mixture& noise);
