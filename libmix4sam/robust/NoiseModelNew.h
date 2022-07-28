@@ -34,7 +34,8 @@
 #include <gtsam/linear/NoiseModel.h>
 
 #include <gtsam/base/timing.h>
-//#define gttic_(label) ((void)0)
+
+#include <boost/format.hpp>
 
 namespace libmix4sam
 {

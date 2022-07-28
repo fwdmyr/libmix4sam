@@ -30,7 +30,6 @@
 #include <gtsam/base/numericalDerivative.h>
 
 #include <gtsam/base/timing.h>
-//#define gttic_(label) ((void)0)
 
 #define SUMMIX_NUMERIC 0
 #define MAXSUMMIX_NUMERIC 0
@@ -257,7 +256,6 @@ namespace libmix4sam {
   }
 
   bool MixtureClustered::simplify(double threshold) {
-    gttic_(MixtureClustered_simplify);
     // Calculate the Bhattacharyya distance.
     std::pair<gtsam::Vector, gtsam::Matrix> dist = this->distBhattacharyya();
     // Look for similar clusters
@@ -340,7 +338,6 @@ namespace libmix4sam {
 
       gtsam::Vector MaxMix::processMixture(const gtsam::Vector& v, boost::optional<ComponentSelect &> gamma_m) const {
       //std::cout << "processMixture" << std::endl;
-      gttic_(MaxMix_processMixture);
 
       // Speed optimization by using cached results
       double md5sum = this->mixture_.md5();

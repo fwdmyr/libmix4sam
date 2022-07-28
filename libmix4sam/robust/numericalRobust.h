@@ -32,6 +32,8 @@
 
 #include <gtsam/base/Vector.h>
 
+#include <boost/format.hpp>
+
 using namespace gtsam;
 
 namespace libmix4sam
